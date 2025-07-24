@@ -1,6 +1,10 @@
 package com.zerir.weathersnap.di
 
+import com.zerir.weathersnap.data.remoteDatasource.LocationService
+import com.zerir.weathersnap.data.remoteDatasource.LocationServiceImpl
+import com.zerir.weathersnap.data.repository.LocationRepositoryImpl
 import com.zerir.weathersnap.data.repository.WeatherRepositoryImpl
+import com.zerir.weathersnap.domain.repository.LocationRepository
 import com.zerir.weathersnap.domain.repository.WeatherRepository
 import dagger.Binds
 import dagger.Module
@@ -17,4 +21,16 @@ abstract class RepositoryModule {
     abstract fun bindWeatherRepository(
         weatherRepositoryImpl: WeatherRepositoryImpl
     ): WeatherRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLocationRepository(
+        locationRepositoryImpl: LocationRepositoryImpl
+    ): LocationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLocationService(
+        locationServiceImpl: LocationServiceImpl
+    ): LocationService
 }
