@@ -6,6 +6,7 @@ import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.core.content.ContextCompat
 import com.zerir.weathersnap.domain.model.Weather
+import com.zerir.weathersnap.domain.model.WeatherOverlayData
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
@@ -18,12 +19,16 @@ import kotlin.coroutines.resumeWithException
 
 interface CameraService {
     suspend fun capturePhoto(imageCapture: ImageCapture): File
-    suspend fun overlayWeatherOnImage(imageFile: File, weather: Weather): File
+    suspend fun capturePhotoWithWeatherOverlay(
+        originalPhoto: File,
+        weather: Weather,
+    ): File
 }
 
 @Singleton
 class CameraServiceImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val imageOverlayService: ImageOverlayService
 ) : CameraService {
 
     override suspend fun capturePhoto(imageCapture: ImageCapture): File =
@@ -52,10 +57,20 @@ class CameraServiceImpl @Inject constructor(
             )
         }
 
-    override suspend fun overlayWeatherOnImage(imageFile: File, weather: Weather): File {
-        // TODO: Implement weather overlay using Canvas/Bitmap
-        // For now, return the original file
-        return imageFile
+    override suspend fun capturePhotoWithWeatherOverlay(
+        originalPhoto: File,
+        weather: Weather,
+    ): File {
+        // Create weather overlay data
+        val overlayData = WeatherOverlayData.fromWeather(weather, usesCelsius = true)
+
+        // Add weather overlay to the photo
+        val weatherPhoto = imageOverlayService.addWeatherOverlay(originalPhoto, overlayData)
+
+        // Delete original photo (keep only the weather overlay version)
+        originalPhoto.delete()
+
+        return weatherPhoto
     }
 
     private fun getOutputDirectory(): File {

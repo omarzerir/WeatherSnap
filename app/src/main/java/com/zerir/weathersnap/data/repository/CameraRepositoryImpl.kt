@@ -21,13 +21,14 @@ class CameraRepositoryImpl @Inject constructor(
         imageCapture: ImageCapture
     ): UiState<CapturedImage> {
         return try {
-            // Step 1: Capture photo with real CameraX
+            // Capture photo with real CameraX
             val originalPhoto = cameraService.capturePhoto(imageCapture)
 
-            // Step 2: Overlay weather data on image
-            val weatherOverlayPhoto = cameraService.overlayWeatherOnImage(originalPhoto, weather)
+            // Overlay weather data on image
+            val weatherOverlayPhoto =
+                cameraService.capturePhotoWithWeatherOverlay(originalPhoto, weather)
 
-            // Step 3: Create captured image model
+            // Create captured image model
             val capturedImage = CapturedImage(
                 imageFile = weatherOverlayPhoto,
                 weather = weather,

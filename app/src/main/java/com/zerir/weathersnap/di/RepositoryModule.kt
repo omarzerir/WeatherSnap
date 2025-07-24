@@ -2,6 +2,8 @@ package com.zerir.weathersnap.di
 
 import com.zerir.weathersnap.data.camera.CameraService
 import com.zerir.weathersnap.data.camera.CameraServiceImpl
+import com.zerir.weathersnap.data.camera.ImageOverlayService
+import com.zerir.weathersnap.data.camera.ImageOverlayServiceImpl
 import com.zerir.weathersnap.data.remoteDatasource.LocationService
 import com.zerir.weathersnap.data.remoteDatasource.LocationServiceImpl
 import com.zerir.weathersnap.data.repository.CameraRepositoryImpl
@@ -49,4 +51,10 @@ abstract class RepositoryModule {
     abstract fun bindCameraService(
         cameraServiceImpl: CameraServiceImpl
     ): CameraService
+
+    @Binds
+    @Singleton
+    abstract fun bindImageOverlayService(
+        imageOverlayServiceImpl: ImageOverlayServiceImpl
+    ): ImageOverlayService
 }
