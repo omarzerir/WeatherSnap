@@ -38,6 +38,35 @@ fun requestLocationPermissions(
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun requestCameraPermission(
+    onPermissionGranted: () -> Unit,
+    onPermissionDenied: () -> Unit,
+): MultiplePermissionsState {
+    val permissionsState = rememberMultiplePermissionsState(
+        permissions = listOf(Manifest.permission.CAMERA)
+    )
+
+    LaunchedEffect(permissionsState.allPermissionsGranted) {
+        when {
+            permissionsState.allPermissionsGranted -> {
+                onPermissionGranted()
+            }
+            else -> {
+                onPermissionDenied()
+            }
+        }
+    }
+
+    return permissionsState
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
 fun MultiplePermissionsState.hasLocationPermission(): Boolean {
+    return this.allPermissionsGranted
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+fun MultiplePermissionsState.hasCameraPermission(): Boolean {
     return this.allPermissionsGranted
 }

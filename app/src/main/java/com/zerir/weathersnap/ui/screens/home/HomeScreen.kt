@@ -8,6 +8,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -20,6 +21,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.zerir.weathersnap.domain.model.UiState
 import com.zerir.weathersnap.domain.model.getDataOrNull
 import com.zerir.weathersnap.domain.model.getErrorMessageOrNull
+import com.zerir.weathersnap.ui.screens.SharedDataViewModel
 import com.zerir.weathersnap.ui.state.LocationState
 import com.zerir.weathersnap.utils.hasLocationPermission
 import com.zerir.weathersnap.utils.requestLocationPermissions
@@ -27,10 +29,12 @@ import com.zerir.weathersnap.utils.requestLocationPermissions
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
+    sharedDataViewModel: SharedDataViewModel,
     onNavigateToCamera: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
+
     val weatherState by viewModel.weatherState.collectAsState()
     val locationState by viewModel.locationState.collectAsState()
 
@@ -38,6 +42,16 @@ fun HomeScreen(
         onPermissionGranted = { viewModel.onPermissionGranted() },
         onPermissionDenied = { viewModel.onPermissionDenied() },
     )
+
+    // Update shared data when we have both location and weather
+    LaunchedEffect(locationState, weatherState) {
+        val coordinates = (locationState as? LocationState.Success)?.coordinates
+        val weather = (weatherState as? UiState.Success)?.data
+
+        if (coordinates != null && weather != null) {
+            sharedDataViewModel.setWeatherData(weather, coordinates)
+        }
+    }
 
     Column(
         modifier = Modifier
