@@ -7,13 +7,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.zerir.weathersnap.ui.screens.CameraScreen
-import com.zerir.weathersnap.ui.screens.HomeScreen
+import com.zerir.weathersnap.ui.screens.home.HomeScreen
 import com.zerir.weathersnap.ui.screens.SettingsScreen
 
 @Composable
 fun WeatherSnapNavigation(
+    modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,

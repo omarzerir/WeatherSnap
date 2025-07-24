@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,13 @@ plugins {
     // Hilt
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+}
+
+// Load API keys from properties file
+val apiKeysFile = rootProject.file("apikeys.properties")
+val apiKeys = Properties()
+if (apiKeysFile.exists()) {
+    apiKeys.load(FileInputStream(apiKeysFile))
 }
 
 android {
@@ -22,6 +32,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "WEATHER_API_KEY", "\"${apiKeys.getProperty("WEATHER_API_KEY", "")}\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -39,6 +52,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
