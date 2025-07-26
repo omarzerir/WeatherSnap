@@ -58,6 +58,7 @@ fun CameraPreview(
 }
 
 private suspend fun getCameraProvider(context: Context): ProcessCameraProvider {
-    val cameraProviderFuture: ListenableFuture<ProcessCameraProvider> = ProcessCameraProvider.getInstance(context)
+    val cameraProviderFuture: ListenableFuture<ProcessCameraProvider> =
+        ProcessCameraProvider.getInstance(context)
     return cameraProviderFuture.await()
 }

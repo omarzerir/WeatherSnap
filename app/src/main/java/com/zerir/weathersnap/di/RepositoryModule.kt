@@ -4,12 +4,16 @@ import com.zerir.weathersnap.data.camera.CameraService
 import com.zerir.weathersnap.data.camera.CameraServiceImpl
 import com.zerir.weathersnap.data.camera.ImageOverlayService
 import com.zerir.weathersnap.data.camera.ImageOverlayServiceImpl
+import com.zerir.weathersnap.data.localDatasource.FileManagerService
+import com.zerir.weathersnap.data.localDatasource.FileManagerServiceImpl
 import com.zerir.weathersnap.data.remoteDatasource.LocationService
 import com.zerir.weathersnap.data.remoteDatasource.LocationServiceImpl
 import com.zerir.weathersnap.data.repository.CameraRepositoryImpl
+import com.zerir.weathersnap.data.repository.ImageHistoryRepositoryImpl
 import com.zerir.weathersnap.data.repository.LocationRepositoryImpl
 import com.zerir.weathersnap.data.repository.WeatherRepositoryImpl
 import com.zerir.weathersnap.domain.repository.CameraRepository
+import com.zerir.weathersnap.domain.repository.ImageHistoryRepository
 import com.zerir.weathersnap.domain.repository.LocationRepository
 import com.zerir.weathersnap.domain.repository.WeatherRepository
 import dagger.Binds
@@ -57,4 +61,16 @@ abstract class RepositoryModule {
     abstract fun bindImageOverlayService(
         imageOverlayServiceImpl: ImageOverlayServiceImpl
     ): ImageOverlayService
+
+    @Binds
+    @Singleton
+    abstract fun bindFileManagerService(
+        fileManagerServiceImpl: FileManagerServiceImpl
+    ): FileManagerService
+
+    @Binds
+    @Singleton
+    abstract fun bindImageHistoryRepository(
+        imageHistoryRepositoryImpl: ImageHistoryRepositoryImpl
+    ): ImageHistoryRepository
 }

@@ -113,4 +113,12 @@ dependencies {
 
     // Coroutines Guava for CameraX
     implementation(libs.guava.coroutines)
+
+    // Paging
+    implementation(libs.room.paging)
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
+
+    // Icons
+    implementation(libs.androidx.compose.material.icons.extended)
 }

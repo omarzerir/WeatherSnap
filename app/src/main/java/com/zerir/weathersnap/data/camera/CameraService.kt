@@ -1,10 +1,10 @@
 package com.zerir.weathersnap.data.camera
 
 import android.content.Context
-import android.os.Environment
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.core.content.ContextCompat
+import com.zerir.weathersnap.data.localDatasource.FileManagerService
 import com.zerir.weathersnap.domain.model.Weather
 import com.zerir.weathersnap.domain.model.WeatherOverlayData
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,18 +22,21 @@ interface CameraService {
     suspend fun capturePhotoWithWeatherOverlay(
         originalPhoto: File,
         weather: Weather,
+        useCelsius: Boolean,
     ): File
 }
 
 @Singleton
 class CameraServiceImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val imageOverlayService: ImageOverlayService
+    private val imageOverlayService: ImageOverlayService,
+    private val fileManagerService: FileManagerService
 ) : CameraService {
 
-    override suspend fun capturePhoto(imageCapture: ImageCapture): File =
-        suspendCancellableCoroutine { continuation ->
-            val outputDirectory = getOutputDirectory()
+    override suspend fun capturePhoto(imageCapture: ImageCapture): File {
+        val outputDirectory = fileManagerService.getImagesDirectory()
+
+        return suspendCancellableCoroutine { continuation ->
             val photoFile = File(
                 outputDirectory,
                 SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US)
@@ -56,13 +59,15 @@ class CameraServiceImpl @Inject constructor(
                 }
             )
         }
+    }
 
     override suspend fun capturePhotoWithWeatherOverlay(
         originalPhoto: File,
         weather: Weather,
+        useCelsius: Boolean,
     ): File {
         // Create weather overlay data
-        val overlayData = WeatherOverlayData.fromWeather(weather, usesCelsius = true)
+        val overlayData = WeatherOverlayData.fromWeather(weather, usesCelsius = useCelsius)
 
         // Add weather overlay to the photo
         val weatherPhoto = imageOverlayService.addWeatherOverlay(originalPhoto, overlayData)
@@ -71,14 +76,5 @@ class CameraServiceImpl @Inject constructor(
         originalPhoto.delete()
 
         return weatherPhoto
-    }
-
-    private fun getOutputDirectory(): File {
-        val picturesDir =
-            File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "WeatherSnap")
-        if (!picturesDir.exists()) {
-            picturesDir.mkdirs()
-        }
-        return picturesDir
     }
 }

@@ -1,4 +1,4 @@
-package com.zerir.weathersnap.ui.state
+package com.zerir.weathersnap.ui.screens.camera
 
 import com.zerir.weathersnap.domain.model.CapturedImage
 
@@ -7,7 +7,6 @@ sealed class CameraState {
     data object Loading : CameraState()
     data class Success(val capturedImage: CapturedImage) : CameraState()
     data class Error(val message: String) : CameraState()
-    data object PermissionDenied : CameraState()
 }
 
 fun CameraState.getCapturedImageOrNull(): CapturedImage? = when (this) {

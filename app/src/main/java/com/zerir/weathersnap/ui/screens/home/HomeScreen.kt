@@ -1,167 +1,226 @@
 package com.zerir.weathersnap.ui.screens.home
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.zerir.weathersnap.domain.model.UiState
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.zerir.weathersnap.domain.model.getDataOrNull
-import com.zerir.weathersnap.domain.model.getErrorMessageOrNull
+import com.zerir.weathersnap.ui.components.FullImageView
+import com.zerir.weathersnap.ui.components.HistorySection
+import com.zerir.weathersnap.ui.components.PermissionSettingsDialog
+import com.zerir.weathersnap.ui.components.PermissionSettingsDialogData
+import com.zerir.weathersnap.ui.components.WeatherSection
 import com.zerir.weathersnap.ui.screens.SharedDataViewModel
-import com.zerir.weathersnap.ui.state.LocationState
-import com.zerir.weathersnap.utils.hasLocationPermission
-import com.zerir.weathersnap.utils.requestLocationPermissions
+import com.zerir.weathersnap.utils.openSettings
+import com.zerir.weathersnap.utils.rememberCameraPermissionManager
+import com.zerir.weathersnap.utils.rememberLocationPermissionManager
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     sharedDataViewModel: SharedDataViewModel,
     onNavigateToCamera: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val viewModel: HomeViewModel = hiltViewModel()
+    val homeViewModel: HomeViewModel = hiltViewModel()
+    val homeState by homeViewModel.state.collectAsState()
+    val imageHistory = homeState.imageHistory.collectAsLazyPagingItems()
 
-    val weatherState by viewModel.weatherState.collectAsState()
-    val locationState by viewModel.locationState.collectAsState()
-
-    val permissionsState = requestLocationPermissions(
-        onPermissionGranted = { viewModel.onPermissionGranted() },
-        onPermissionDenied = { viewModel.onPermissionDenied() },
-    )
-
-    // Update shared data when we have both location and weather
-    LaunchedEffect(locationState, weatherState) {
-        val coordinates = (locationState as? LocationState.Success)?.coordinates
-        val weather = (weatherState as? UiState.Success)?.data
-
-        if (coordinates != null && weather != null) {
+    // Update shared data when weather changes
+    LaunchedEffect(homeState.weatherState, homeState.locationState) {
+        val weather = homeState.weatherState?.getDataOrNull()
+        val coordinates = homeState.locationState?.getDataOrNull()
+        if (weather != null && coordinates != null) {
             sharedDataViewModel.setWeatherData(weather, coordinates)
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Home Screen (Weather History)",
-            textAlign = TextAlign.Center
+    // Full image viewer state
+    var showFullImage by remember { mutableStateOf(false) }
+    var fullImagePath by remember { mutableStateOf<String?>(null) }
+
+    var settingsDialogData by remember { mutableStateOf<PermissionSettingsDialogData?>(null) }
+
+    // Location Permission
+    val locationPermission = rememberLocationPermissionManager()
+
+    locationPermission.Listen { granted ->
+        if (granted) {
+            if (homeState.hasLocationPermission) return@Listen
+            homeViewModel.onEvent(HomeEvent.LocationPermissionGranted)
+        } else {
+            if (!homeState.hasLocationPermission) return@Listen
+            homeViewModel.onEvent(HomeEvent.LocationPermissionDenied)
+        }
+    }
+
+    val cameraPermission = rememberCameraPermissionManager()
+
+    // Track if we've done the initial location permission request
+    var hasRequestedLocationOnce by rememberSaveable { mutableStateOf(false) }
+
+    // One-time location permission request on app start
+    LaunchedEffect(hasRequestedLocationOnce) {
+        if (!hasRequestedLocationOnce) {
+            if (locationPermission.isGranted) {
+                homeViewModel.onEvent(HomeEvent.LocationPermissionGranted)
+            } else {
+                locationPermission.request()
+            }
+            hasRequestedLocationOnce = true
+        }
+    }
+
+    fun handleCameraNavigation() {
+        if (cameraPermission.isGranted) {
+            onNavigateToCamera()
+        } else {
+            if (cameraPermission.isPermanentlyDenied) {
+                settingsDialogData = PermissionSettingsDialogData.Camera
+            } else {
+                cameraPermission.request(
+                    onGranted = { onNavigateToCamera() },
+                )
+            }
+        }
+    }
+
+    if (showFullImage && fullImagePath != null) {
+        FullImageView(
+            imagePath = fullImagePath,
+            onClose = { showFullImage = false }
         )
+        return
+    }
 
-        Button(
-            onClick = {
-                if (permissionsState.hasLocationPermission()) {
-                    viewModel.loadCurrentLocationWeather()
-                } else {
-                    permissionsState.launchMultiplePermissionRequest()
-                }
-            },
-            modifier = Modifier.padding(top = 16.dp)
-        ) {
-            Text("Get Current Location Weather")
-        }
+    val context = LocalContext.current
+    PermissionSettingsDialog(
+        showDialog = settingsDialogData != null,
+        data = settingsDialogData,
+        onDismiss = { settingsDialogData = null },
+        onGoToSettings = {
+            context.openSettings()
+            settingsDialogData = null
+        },
+    )
 
-        Button(
-            onClick = { viewModel.loadWeather() },
-            modifier = Modifier.padding(top = 16.dp)
-        ) {
-            Text("Test Weather API")
-        }
-
-        locationState?.let { state ->
-            when (state) {
-                is LocationState.Loading -> {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
                     Text(
-                        text = "Getting location...",
-                        color = Color.Blue,
-                        modifier = Modifier.padding(8.dp)
+                        text = "Weather Snap",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Light
                     )
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    IconButton(
+                        onClick = { onNavigateToSettings() },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings"
+                        )
+                    }
                 }
-
-                is LocationState.Success -> {
-                    Text(
-                        text = "Coordinates: ${state.coordinates.latitude}, ${state.coordinates.longitude}",
-                        color = Color.Green,
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
-
-                is LocationState.Error -> {
-                    Text(
-                        text = "Location Error: ${state.message}",
-                        color = Color.Red,
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
-
-                is LocationState.PermissionDenied -> {
-                    Text(
-                        text = "Location permission denied",
-                        color = Color.Red,
-                        modifier = Modifier.padding(8.dp)
-                    )
+            )
+        },
+        floatingActionButton = {
+            if (homeState.canNavigateToCamera) {
+                FloatingActionButton(
+                    onClick = { handleCameraNavigation() },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = "Take Weather Photo")
                 }
             }
         }
+    ) { innerPadding ->
+        PullToRefreshBox(
+            isRefreshing = homeState.isRefreshingWeather,
+            onRefresh = { homeViewModel.onEvent(HomeEvent.RefreshWeather) },
+            modifier = Modifier.padding(
+                top = innerPadding.calculateTopPadding(),
+                bottom = 0.dp, // Remove bottom padding
+                start = innerPadding.calculateStartPadding(LayoutDirection.Ltr),
+                end = innerPadding.calculateEndPadding(LayoutDirection.Ltr)
+            )
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item { Spacer(modifier = Modifier.height(2.dp)) }
 
-        weatherState?.let { state ->
-            when (state) {
-                is UiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-                }
-
-                is UiState.Success -> {
-                    val weather = state.getDataOrNull()!!
-                    Text(
-                        text = """
-                        Location: ${weather.locationName}
-                        Temperature: ${weather.temperatureCelsius}°C / ${weather.temperatureFahrenheit}°F
-                        Condition: ${weather.description}
-                        Humidity: ${weather.humidity}%
-                        Wind: ${weather.windSpeedKph} km/h
-                    """.trimIndent(),
-                        modifier = Modifier.padding(16.dp)
+                // Weather Section
+                item {
+                    WeatherSection(
+                        locationState = homeState.locationState,
+                        weatherState = homeState.weatherState,
+                        hasLocationPermission = homeState.hasLocationPermission,
+                        lastUpdated = homeState.lastUpdatedTime,
+                        showCelsius = homeState.showCelsius,
+                        onToggleUnits = { homeViewModel.onEvent(HomeEvent.ToggleTemperatureUnit) },
+                        onRequestPermission = {
+                            if (locationPermission.isPermanentlyDenied) {
+                                settingsDialogData = PermissionSettingsDialogData.Location
+                            } else {
+                                locationPermission.request()
+                            }
+                        },
+                        onRetryWeather = {
+                            homeViewModel.onEvent(HomeEvent.LoadCurrentLocationWeather)
+                        }
                     )
                 }
 
-                is UiState.Error -> {
-                    Text(
-                        text = "Error: ${state.getErrorMessageOrNull()!!}",
-                        modifier = Modifier.padding(16.dp)
+                // History Section
+                item {
+                    HistorySection(
+                        imageHistory = imageHistory,
+                        canNavigateToCamera = homeState.canNavigateToCamera,
+                        onImageClick = { entity ->
+                            fullImagePath = entity.filePath
+                            showFullImage = true
+                        },
+                        onDeleteImage = { entity ->
+                            homeViewModel.onEvent(
+                                HomeEvent.DeleteImage(
+                                    imageId = entity.id,
+                                    filePath = entity.filePath
+                                )
+                            )
+                        },
+                        onCaptureFirst = { handleCameraNavigation() }
                     )
                 }
+
+                item { Spacer(modifier = Modifier.height(16.dp)) }
             }
-        }
-
-        Button(
-            onClick = onNavigateToCamera,
-            modifier = Modifier.padding(top = 16.dp)
-        ) {
-            Text("Capture Weather Photo")
-        }
-
-        Button(
-            onClick = onNavigateToSettings,
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            Text("Settings")
         }
     }
 }

@@ -10,10 +10,7 @@ interface CameraRepository {
     suspend fun capturePhotoWithWeatherOverlay(
         weather: Weather,
         coordinates: Coordinates,
-        imageCapture: ImageCapture
+        imageCapture: ImageCapture,
+        useCelsius: Boolean,
     ): UiState<CapturedImage>
-
-    suspend fun getAllCapturedImages(): UiState<List<CapturedImage>>
-
-    suspend fun deleteCapturedImage(imageId: String): UiState<Unit>
 }
