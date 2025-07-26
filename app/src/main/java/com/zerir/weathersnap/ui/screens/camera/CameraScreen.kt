@@ -27,14 +27,6 @@ fun CameraScreen(
     var showFullImage by remember { mutableStateOf(false) }
     var fullImagePath by remember { mutableStateOf<String?>(null) }
 
-    if (showFullImage && fullImagePath != null) {
-        FullImageView(
-            imagePath = fullImagePath,
-            onClose = { showFullImage = false }
-        )
-        return
-    }
-
     weatherData?.let { (weather, coordinates) ->
         Box(modifier = modifier.fillMaxSize()) {
             CameraPreview(
@@ -72,6 +64,13 @@ fun CameraScreen(
                     onBack = onNavigateBack,
                     showCelsius = showCelsius,
                     onToggleUnits = { showCelsius = it }
+                )
+            }
+
+            if (showFullImage && fullImagePath != null) {
+                FullImageView(
+                    imagePath = fullImagePath,
+                    onClose = { showFullImage = false }
                 )
             }
         }

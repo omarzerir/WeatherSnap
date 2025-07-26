@@ -12,10 +12,13 @@ class PermissionManager(
     internal var onGranted: (() -> Unit)? = null
     internal var onDenied: ((Boolean) -> Unit)? = null
 
+    // Track if permission has been requested at least once
+    private var hasBeenRequested by mutableStateOf(false)
+
     // Check permission state
     val isGranted: Boolean get() = permissionState.allPermissionsGranted
     val isPermanentlyDenied: Boolean
-        get() = permissionState.permissions.any {
+        get() = hasBeenRequested && permissionState.permissions.any {
             it.isPermanentlyDenied()
         }
 
@@ -33,6 +36,8 @@ class PermissionManager(
         this.onGranted = onGranted
         this.onDenied = onDenied
 
+        // Mark as requested before launching
+        hasBeenRequested = true
         permissionState.launchMultiplePermissionRequest()
     }
 

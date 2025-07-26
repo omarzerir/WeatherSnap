@@ -24,7 +24,9 @@ class ImageHistoryRepositoryImpl @Inject constructor(
         return Pager(
             config = PagingConfig(
                 pageSize = 20,
-                enablePlaceholders = false
+                prefetchDistance = 6,
+                enablePlaceholders = true,
+                initialLoadSize = 20,
             ),
             pagingSourceFactory = { capturedImageDao.getAllImagesPaginated() }
         ).flow

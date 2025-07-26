@@ -1,7 +1,9 @@
 package com.zerir.weathersnap.ui.screens.home
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Settings
@@ -9,16 +11,24 @@ import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
+import com.zerir.weathersnap.data.entity.CapturedImageEntity
 import com.zerir.weathersnap.domain.model.getDataOrNull
+import com.zerir.weathersnap.ui.components.EmptyHistoryState
+import com.zerir.weathersnap.ui.components.ErrorItem
 import com.zerir.weathersnap.ui.components.FullImageView
-import com.zerir.weathersnap.ui.components.HistorySection
+import com.zerir.weathersnap.ui.components.ImageHistoryCard
+import com.zerir.weathersnap.ui.components.ImageHistoryCardPlaceholder
 import com.zerir.weathersnap.ui.components.PermissionSettingsDialog
 import com.zerir.weathersnap.ui.components.PermissionSettingsDialogData
 import com.zerir.weathersnap.ui.components.WeatherSection
@@ -98,14 +108,6 @@ fun HomeScreen(
         }
     }
 
-    if (showFullImage && fullImagePath != null) {
-        FullImageView(
-            imagePath = fullImagePath,
-            onClose = { showFullImage = false }
-        )
-        return
-    }
-
     val context = LocalContext.current
     PermissionSettingsDialog(
         showDialog = settingsDialogData != null,
@@ -117,110 +119,251 @@ fun HomeScreen(
         },
     )
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Weather Snap",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Light
-                    )
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                actions = {
-                    IconButton(
-                        onClick = { onNavigateToSettings() },
-                        colors = IconButtonDefaults.iconButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = "Weather Snap",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Light
                         )
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    actions = {
+                        IconButton(
+                            onClick = { onNavigateToSettings() },
+                            colors = IconButtonDefaults.iconButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings"
+                            )
+                        }
+                    }
+                )
+            },
+            floatingActionButton = {
+                if (homeState.canNavigateToCamera) {
+                    FloatingActionButton(
+                        onClick = { handleCameraNavigation() },
+                        containerColor = MaterialTheme.colorScheme.primary
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings"
-                        )
+                        Icon(Icons.Default.PhotoCamera, contentDescription = "Take Weather Photo")
                     }
                 }
+            }
+        ) { innerPadding ->
+            PullToRefreshBox(
+                isRefreshing = homeState.isRefreshingWeather,
+                onRefresh = { homeViewModel.onEvent(HomeEvent.RefreshWeather) },
+                modifier = Modifier.padding(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = 0.dp,
+                    start = innerPadding.calculateStartPadding(LayoutDirection.Ltr),
+                    end = innerPadding.calculateEndPadding(LayoutDirection.Ltr)
+                )
+            ) {
+                HomeContentList(
+                    imageHistory = imageHistory,
+                    homeState = homeState,
+                    onRequestLocationPermission = {
+                        if(locationPermission.isPermanentlyDenied) {
+                            settingsDialogData = PermissionSettingsDialogData.Location
+                        } else {
+                            locationPermission.request()
+                        }
+                    },
+                    onImageClick = { entity ->
+                        fullImagePath = entity.filePath
+                        showFullImage = true
+                    },
+                    onDeleteImage = { entity ->
+                        homeViewModel.onEvent(
+                            HomeEvent.DeleteImage(
+                                imageId = entity.id,
+                                filePath = entity.filePath
+                            )
+                        )
+                    },
+                    onCaptureFirst = { handleCameraNavigation() },
+                    onToggleUnits = { homeViewModel.onEvent(HomeEvent.ToggleTemperatureUnit) },
+                    onRetryWeather = { homeViewModel.onEvent(HomeEvent.LoadCurrentLocationWeather) }
+                )
+            }
+        }
+
+        // Full image overlay
+        if (showFullImage && fullImagePath != null) {
+            FullImageView(
+                imagePath = fullImagePath,
+                onClose = { showFullImage = false }
             )
-        },
-        floatingActionButton = {
-            if (homeState.canNavigateToCamera) {
-                FloatingActionButton(
-                    onClick = { handleCameraNavigation() },
-                    containerColor = MaterialTheme.colorScheme.primary
+        }
+    }
+}
+
+@Composable
+private fun HomeContentList(
+    imageHistory: LazyPagingItems<CapturedImageEntity>,
+    homeState: HomeState,
+    onRequestLocationPermission: () -> Unit,
+    onImageClick: (CapturedImageEntity) -> Unit,
+    onDeleteImage: (CapturedImageEntity) -> Unit,
+    onCaptureFirst: () -> Unit,
+    onToggleUnits: () -> Unit,
+    onRetryWeather: () -> Unit
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(16.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Weather Section Header - spans full width
+        item(
+            key = "weather_section",
+            span = { GridItemSpan(maxLineSpan) }
+        ) {
+            Column {
+                Spacer(modifier = Modifier.height(2.dp))
+                WeatherSection(
+                    locationState = homeState.locationState,
+                    weatherState = homeState.weatherState,
+                    hasLocationPermission = homeState.hasLocationPermission,
+                    lastUpdated = homeState.lastUpdatedTime,
+                    showCelsius = homeState.showCelsius,
+                    onToggleUnits = onToggleUnits,
+                    onRequestPermission = onRequestLocationPermission,
+                    onRetryWeather = onRetryWeather
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+
+        // History Section Header
+        if (imageHistory.itemCount > 0 || imageHistory.loadState.refresh is LoadState.Loading) {
+            item(
+                key = "history_header",
+                span = { GridItemSpan(maxLineSpan) }
+            ) {
+                Text(
+                    text = "Weather History",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+        }
+
+        // Empty state for images
+        if (imageHistory.loadState.refresh is LoadState.NotLoading && imageHistory.itemCount == 0) {
+            item(
+                key = "empty_state",
+                span = { GridItemSpan(maxLineSpan) }
+            ) {
+                EmptyHistoryState(
+                    showCaptureButton = homeState.canNavigateToCamera,
+                    onCapturePhotoClick = onCaptureFirst
+                )
+            }
+        }
+
+        // Loading state
+        if (imageHistory.loadState.refresh is LoadState.Loading && imageHistory.itemCount == 0) {
+            item(
+                key = "loading_state",
+                span = { GridItemSpan(maxLineSpan) }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.PhotoCamera, contentDescription = "Take Weather Photo")
+                    CircularProgressIndicator()
                 }
             }
         }
-    ) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = homeState.isRefreshingWeather,
-            onRefresh = { homeViewModel.onEvent(HomeEvent.RefreshWeather) },
-            modifier = Modifier.padding(
-                top = innerPadding.calculateTopPadding(),
-                bottom = 0.dp, // Remove bottom padding
-                start = innerPadding.calculateStartPadding(LayoutDirection.Ltr),
-                end = innerPadding.calculateEndPadding(LayoutDirection.Ltr)
-            )
-        ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+
+        // Error state
+        if (imageHistory.loadState.refresh is LoadState.Error) {
+            item(
+                key = "error_state",
+                span = { GridItemSpan(maxLineSpan) }
             ) {
-                item { Spacer(modifier = Modifier.height(2.dp)) }
-
-                // Weather Section
-                item {
-                    WeatherSection(
-                        locationState = homeState.locationState,
-                        weatherState = homeState.weatherState,
-                        hasLocationPermission = homeState.hasLocationPermission,
-                        lastUpdated = homeState.lastUpdatedTime,
-                        showCelsius = homeState.showCelsius,
-                        onToggleUnits = { homeViewModel.onEvent(HomeEvent.ToggleTemperatureUnit) },
-                        onRequestPermission = {
-                            if (locationPermission.isPermanentlyDenied) {
-                                settingsDialogData = PermissionSettingsDialogData.Location
-                            } else {
-                                locationPermission.request()
-                            }
-                        },
-                        onRetryWeather = {
-                            homeViewModel.onEvent(HomeEvent.LoadCurrentLocationWeather)
-                        }
-                    )
-                }
-
-                // History Section
-                item {
-                    HistorySection(
-                        imageHistory = imageHistory,
-                        canNavigateToCamera = homeState.canNavigateToCamera,
-                        onImageClick = { entity ->
-                            fullImagePath = entity.filePath
-                            showFullImage = true
-                        },
-                        onDeleteImage = { entity ->
-                            homeViewModel.onEvent(
-                                HomeEvent.DeleteImage(
-                                    imageId = entity.id,
-                                    filePath = entity.filePath
-                                )
-                            )
-                        },
-                        onCaptureFirst = { handleCameraNavigation() }
-                    )
-                }
-
-                item { Spacer(modifier = Modifier.height(16.dp)) }
+                val error = imageHistory.loadState.refresh as LoadState.Error
+                ErrorItem(
+                    message = error.error.localizedMessage ?: "Failed to load images",
+                    onRetry = { imageHistory.refresh() }
+                )
             }
+        }
+
+        // Image grid items - each takes 1 column
+        items(
+            count = imageHistory.itemCount,
+            key = imageHistory.itemKey { it.id }
+        ) { index ->
+            val item = imageHistory[index]
+            if (item != null) {
+                ImageHistoryCard(
+                    imageEntity = item,
+                    onImageClick = onImageClick,
+                    onDeleteClick = { onDeleteImage(item) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                // Placeholder for loading items
+                ImageHistoryCardPlaceholder()
+            }
+        }
+
+        // Append loading state
+        when (val loadState = imageHistory.loadState.append) {
+            is LoadState.Loading -> {
+                item(
+                    key = "append_loading",
+                    span = { GridItemSpan(maxLineSpan) }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
+            is LoadState.Error -> {
+                item(
+                    key = "append_error",
+                    span = { GridItemSpan(maxLineSpan) }
+                ) {
+                    ErrorItem(
+                        message = loadState.error.localizedMessage ?: "Loading failed",
+                        onRetry = { imageHistory.retry() }
+                    )
+                }
+            }
+            else -> {}
+        }
+
+        // Bottom spacer
+        item(
+            key = "bottom_spacer",
+            span = { GridItemSpan(maxLineSpan) }
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
