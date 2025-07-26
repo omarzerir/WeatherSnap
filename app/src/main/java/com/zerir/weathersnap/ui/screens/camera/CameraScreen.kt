@@ -1,8 +1,13 @@
 package com.zerir.weathersnap.ui.screens.camera
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -22,7 +27,9 @@ fun CameraScreen(
     val cameraState by cameraViewModel.cameraState.collectAsState()
     val weatherData by sharedDataViewModel.currentWeatherData.collectAsState()
 
-    var showCelsius by rememberSaveable { mutableStateOf(true) }
+    var showCelsius by rememberSaveable {
+        mutableStateOf(weatherData?.defaultCelsius ?: true)
+    }
 
     var showFullImage by remember { mutableStateOf(false) }
     var fullImagePath by remember { mutableStateOf<String?>(null) }
@@ -42,11 +49,20 @@ fun CameraScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                CameraOverlay(
-                    weather,
-                    showCelsius,
-                    modifier = Modifier.padding(top = 32.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(top = 32.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onNavigateBack
+                    ) {
+                        Icon(Icons.Default.ArrowBackIosNew, contentDescription = "Back")
+                    }
+                    CameraOverlay(
+                        weather,
+                        showCelsius,
+                    )
+                }
 
                 CameraBottomControls(
                     modifier = Modifier.padding(bottom = 24.dp),
@@ -61,7 +77,6 @@ fun CameraScreen(
                         fullImagePath = path
                         showFullImage = true
                     },
-                    onBack = onNavigateBack,
                     showCelsius = showCelsius,
                     onToggleUnits = { showCelsius = it }
                 )

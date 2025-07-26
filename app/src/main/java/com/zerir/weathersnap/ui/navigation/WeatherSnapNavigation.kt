@@ -6,7 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.zerir.weathersnap.ui.screens.SettingsScreen
+import com.zerir.weathersnap.ui.screens.settings.SettingsScreen
 import com.zerir.weathersnap.ui.screens.SharedDataViewModel
 import com.zerir.weathersnap.ui.screens.camera.CameraScreen
 import com.zerir.weathersnap.ui.screens.home.HomeScreen

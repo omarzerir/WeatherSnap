@@ -24,6 +24,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.zerir.weathersnap.data.entity.CapturedImageEntity
 import com.zerir.weathersnap.domain.model.getDataOrNull
+import com.zerir.weathersnap.ui.components.DeleteDialog
 import com.zerir.weathersnap.ui.components.EmptyHistoryState
 import com.zerir.weathersnap.ui.components.ErrorItem
 import com.zerir.weathersnap.ui.components.FullImageView
@@ -54,7 +55,7 @@ fun HomeScreen(
         val weather = homeState.weatherState?.getDataOrNull()
         val coordinates = homeState.locationState?.getDataOrNull()
         if (weather != null && coordinates != null) {
-            sharedDataViewModel.setWeatherData(weather, coordinates)
+            sharedDataViewModel.setWeatherData(weather, coordinates, homeState.defaultCelsius)
         }
     }
 
@@ -63,6 +64,7 @@ fun HomeScreen(
     var fullImagePath by remember { mutableStateOf<String?>(null) }
 
     var settingsDialogData by remember { mutableStateOf<PermissionSettingsDialogData?>(null) }
+    var deleteDialogData by remember { mutableStateOf<CapturedImageEntity?>(null) }
 
     // Location Permission
     val locationPermission = rememberLocationPermissionManager()
@@ -119,18 +121,27 @@ fun HomeScreen(
         },
     )
 
+    DeleteDialog(
+        showDialog = deleteDialogData != null,
+        entity = deleteDialogData,
+        onDismiss = { deleteDialogData = null },
+        onDelete = { entity ->
+            deleteDialogData = null
+            homeViewModel.onEvent(
+                HomeEvent.DeleteImage(
+                    imageId = entity.id,
+                    filePath = entity.filePath
+                )
+            )
+        }
+    )
+
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            text = "Weather Snap",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Light
-                        )
-                    },
+                    title = { Text(text = "Weather Snap") },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -186,12 +197,7 @@ fun HomeScreen(
                         showFullImage = true
                     },
                     onDeleteImage = { entity ->
-                        homeViewModel.onEvent(
-                            HomeEvent.DeleteImage(
-                                imageId = entity.id,
-                                filePath = entity.filePath
-                            )
-                        )
+                        deleteDialogData = entity
                     },
                     onCaptureFirst = { handleCameraNavigation() },
                     onToggleUnits = { homeViewModel.onEvent(HomeEvent.ToggleTemperatureUnit) },

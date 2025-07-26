@@ -6,6 +6,7 @@ import androidx.paging.cachedIn
 import com.zerir.weathersnap.domain.model.UiState
 import com.zerir.weathersnap.domain.repository.ImageHistoryRepository
 import com.zerir.weathersnap.domain.repository.LocationRepository
+import com.zerir.weathersnap.domain.repository.SettingsRepository
 import com.zerir.weathersnap.domain.repository.WeatherRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,15 +22,30 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val weatherRepository: WeatherRepository,
     private val locationRepository: LocationRepository,
-    private val imageHistoryRepository: ImageHistoryRepository
+    private val imageHistoryRepository: ImageHistoryRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
         HomeState(
-            imageHistory = imageHistoryRepository.getAllImagesPaginated().cachedIn(viewModelScope)
+            imageHistory = imageHistoryRepository.getAllImagesPaginated().cachedIn(viewModelScope),
         )
     )
     val state: StateFlow<HomeState> = _state.asStateFlow()
+
+    init {
+        // Listen to settings changes
+        viewModelScope.launch {
+            settingsRepository.showCelsiusFlow.collect { showC ->
+                updateState {
+                    copy(
+                        showCelsius = showC,
+                        defaultCelsius = showC,
+                    )
+                }
+            }
+        }
+    }
 
     fun onEvent(event: HomeEvent) {
         when (event) {

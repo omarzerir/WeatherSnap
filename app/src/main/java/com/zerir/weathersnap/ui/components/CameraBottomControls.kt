@@ -23,7 +23,6 @@ fun CameraBottomControls(
     onCapture: () -> Unit,
     onRetry: () -> Unit,
     onImageClick: (String) -> Unit,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -57,7 +56,7 @@ fun CameraBottomControls(
                 Spacer(Modifier.height(8.dp))
 
                 Button(onClick = onCapture) {
-                    Text("📸 Capture Weather Photo")
+                    Text("Capture Weather Photo")
                 }
             }
 
@@ -81,7 +80,7 @@ fun CameraBottomControls(
                         .clickable { onImageClick(capturedImage.imageFile.absolutePath) },
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
-                Button(onClick = onRetry) { Text("📸 Capture Another") }
+                Button(onClick = onRetry) { Text("Capture Another") }
             }
 
             is CameraState.Error -> {
@@ -90,14 +89,8 @@ fun CameraBottomControls(
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center
                 )
-                Button(onClick = onRetry) { Text("🔄 Try Again") }
+                Button(onClick = onRetry) { Text("Try Again") }
             }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Button(onClick = onBack) {
-            Text("⬅️ Back to Home")
         }
     }
 }
@@ -113,7 +106,6 @@ fun CameraBottomControlsPreview() {
             onCapture = {},
             onRetry = {},
             onImageClick = {},
-            onBack = {}
         )
     }
 }

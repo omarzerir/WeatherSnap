@@ -6,15 +6,19 @@ import com.zerir.weathersnap.data.camera.ImageOverlayService
 import com.zerir.weathersnap.data.camera.ImageOverlayServiceImpl
 import com.zerir.weathersnap.data.localDatasource.FileManagerService
 import com.zerir.weathersnap.data.localDatasource.FileManagerServiceImpl
+import com.zerir.weathersnap.data.localDatasource.SettingsLocalDataSource
+import com.zerir.weathersnap.data.localDatasource.SettingsLocalDataSourceImpl
 import com.zerir.weathersnap.data.remoteDatasource.LocationService
 import com.zerir.weathersnap.data.remoteDatasource.LocationServiceImpl
 import com.zerir.weathersnap.data.repository.CameraRepositoryImpl
 import com.zerir.weathersnap.data.repository.ImageHistoryRepositoryImpl
 import com.zerir.weathersnap.data.repository.LocationRepositoryImpl
+import com.zerir.weathersnap.data.repository.SettingsRepositoryImpl
 import com.zerir.weathersnap.data.repository.WeatherRepositoryImpl
 import com.zerir.weathersnap.domain.repository.CameraRepository
 import com.zerir.weathersnap.domain.repository.ImageHistoryRepository
 import com.zerir.weathersnap.domain.repository.LocationRepository
+import com.zerir.weathersnap.domain.repository.SettingsRepository
 import com.zerir.weathersnap.domain.repository.WeatherRepository
 import dagger.Binds
 import dagger.Module
@@ -73,4 +77,16 @@ abstract class RepositoryModule {
     abstract fun bindImageHistoryRepository(
         imageHistoryRepositoryImpl: ImageHistoryRepositoryImpl
     ): ImageHistoryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSettingsLocalDataSource(
+        settingsLocalDataSourceImpl: SettingsLocalDataSourceImpl
+    ): SettingsLocalDataSource
+
+    @Binds
+    @Singleton
+    abstract fun bindSettingsRepository(
+        settingsRepositoryImpl: SettingsRepositoryImpl
+    ): SettingsRepository
 }

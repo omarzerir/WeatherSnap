@@ -17,4 +17,5 @@ data class HomeState(
     val hasLocationPermission: Boolean = false,
     val canNavigateToCamera: Boolean = false,
     val showCelsius: Boolean = true,
+    val defaultCelsius: Boolean = true,
 )

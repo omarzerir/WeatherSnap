@@ -11,7 +11,8 @@ import javax.inject.Inject
 
 data class WeatherWithLocation(
     val weather: Weather,
-    val coordinates: Coordinates
+    val coordinates: Coordinates,
+    val defaultCelsius: Boolean,
 )
 
 @HiltViewModel
@@ -20,7 +21,7 @@ class SharedDataViewModel @Inject constructor() : ViewModel() {
     private val _currentWeatherData = MutableStateFlow<WeatherWithLocation?>(null)
     val currentWeatherData: StateFlow<WeatherWithLocation?> = _currentWeatherData.asStateFlow()
 
-    fun setWeatherData(weather: Weather, coordinates: Coordinates) {
-        _currentWeatherData.value = WeatherWithLocation(weather, coordinates)
+    fun setWeatherData(weather: Weather, coordinates: Coordinates, defaultCelsius: Boolean) {
+        _currentWeatherData.value = WeatherWithLocation(weather, coordinates, defaultCelsius)
     }
 }
