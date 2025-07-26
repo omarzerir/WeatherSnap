@@ -30,6 +30,8 @@ datastore = "1.0.0"
 # Testing
 mockk = "1.13.8"
 coroutinesTest = "1.7.3"
+turbine = "1.0.0"
+kotlinTest = "1.9.22"
 # Coroutines Guava
 guava = "1.7.3"
 # Paging
@@ -82,6 +84,8 @@ datastore-preferences = { group = "androidx.datastore", name = "datastore-prefer
 # Testing
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlinTest" }
 # Coroutines Guava
 guava-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-guava", version.ref = "guava" }
 # Paging

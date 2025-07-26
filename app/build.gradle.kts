@@ -110,6 +110,8 @@ dependencies {
     // Testing
     testImplementation(libs.mockk)
     testImplementation(libs.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlin.test)
 
     // Coroutines Guava for CameraX
     implementation(libs.guava.coroutines)
